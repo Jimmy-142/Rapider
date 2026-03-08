@@ -170,10 +170,12 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private CharSequence buildAnchoredWord(String rawWord) {
-        String word = rawWord == null ? "" : rawWord.trim();
-        if (word.isEmpty()) {
+
+        if (rawWord == null) {
             return "";
         }
+
+        String word = rawWord.trim();
 
         int pivot = Math.max(0, (word.length() - 1) / 2);
         @ColorInt int accentColor = getColor(R.color.accent);

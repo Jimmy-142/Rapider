@@ -3,6 +3,8 @@ package com.rapider;
 import android.content.ContentResolver;
 import android.net.Uri;
 
+import androidx.annotation.NonNull;
+
 import com.tom_roush.pdfbox.pdmodel.PDDocument;
 import com.tom_roush.pdfbox.text.PDFTextStripper;
 
@@ -16,6 +18,7 @@ public final class PdfWordExtractor {
     private PdfWordExtractor() {
     }
 
+    @NonNull
     public static List<String> extractWords(ContentResolver contentResolver, Uri uri) throws IOException {
         List<String> words = new ArrayList<>();
 
