@@ -4,5 +4,5 @@
     <string name="play">Play</string>
     <string name="pause">Pause</string>
     <string name="empty_state">Load a PDF to start rapid reading</string>
-    <string name="wpm">WPM: %1$d</string>
+    <string name="wpm">Speed: %1$d</string>
 </resources>
