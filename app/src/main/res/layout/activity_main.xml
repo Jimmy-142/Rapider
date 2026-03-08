@@ -12,8 +12,8 @@
         android:layout_height="220dp"
         android:background="@color/accent"
         app:layout_constraintBottom_toBottomOf="@id/word_text"
-        app:layout_constraintEnd_toEndOf="@id/word_text"
-        app:layout_constraintStart_toStartOf="@id/word_text"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="@id/word_text" />
 
     <TextView
@@ -21,7 +21,9 @@
         android:layout_width="0dp"
         android:layout_height="wrap_content"
         android:fontFamily="sans-serif-medium"
-        android:gravity="center"
+        android:gravity="start|center_vertical"
+        android:hyphenationFrequency="none"
+        android:singleLine="true"
         android:text="@string/empty_state"
         android:textColor="@color/text_primary"
         android:textSize="48sp"

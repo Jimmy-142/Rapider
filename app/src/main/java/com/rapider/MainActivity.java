@@ -5,8 +5,10 @@ import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
 import android.text.SpannableStringBuilder;
+import android.text.TextPaint;
 import android.text.Spanned;
 import android.text.style.ForegroundColorSpan;
+import android.util.TypedValue;
 import android.widget.SeekBar;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -29,6 +31,7 @@ public class MainActivity extends AppCompatActivity {
 
     private static final int MIN_WPM = 100;
     private static final int DEFAULT_WPM = 300;
+    private static final float MIN_WORD_TEXT_SP = 16f;
 
     private final Handler uiHandler = new Handler(Looper.getMainLooper());
     private final ExecutorService ioExecutor = Executors.newSingleThreadExecutor();
@@ -41,6 +44,7 @@ public class MainActivity extends AppCompatActivity {
     private TextView wordText;
     private TextView wpmLabel;
     private MaterialButton playPauseButton;
+    private float baseWordTextSizePx;
 
     private final Runnable tick = new Runnable() {
         @Override
@@ -54,7 +58,7 @@ public class MainActivity extends AppCompatActivity {
                 return;
             }
 
-            wordText.setText(buildAnchoredWord(words.get(currentIndex)));
+            showWord(words.get(currentIndex));
             currentIndex++;
 
             long delay = Math.max(30L, 60_000L / Math.max(MIN_WPM, currentWpm));
@@ -75,6 +79,7 @@ public class MainActivity extends AppCompatActivity {
         playPauseButton = findViewById(R.id.play_pause_button);
         MaterialButton pickPdfButton = findViewById(R.id.pick_pdf_button);
         SeekBar wpmSeek = findViewById(R.id.wpm_seek);
+        baseWordTextSizePx = wordText.getTextSize();
 
         setupOpenDocumentLauncher();
         updateWpmLabel();
@@ -140,7 +145,7 @@ public class MainActivity extends AppCompatActivity {
                         wordText.setText(R.string.empty_state);
                         Toast.makeText(this, "No readable text found in PDF", Toast.LENGTH_SHORT).show();
                     } else {
-                        wordText.setText(buildAnchoredWord(words.get(0)));
+                        showWord(words.get(0));
                         Toast.makeText(this, "Loaded " + words.size() + " words", Toast.LENGTH_SHORT).show();
                     }
                 });
@@ -169,15 +174,52 @@ public class MainActivity extends AppCompatActivity {
         wpmLabel.setText(getString(R.string.wpm, currentWpm));
     }
 
-    private CharSequence buildAnchoredWord(String rawWord) {
-
+    private void showWord(String rawWord) {
         if (rawWord == null) {
-            return "";
+            wordText.setText("");
+            wordText.setTranslationX(0f);
+            return;
         }
 
         String word = rawWord.trim();
+        if (word.isEmpty()) {
+            wordText.setText("");
+            wordText.setTranslationX(0f);
+            return;
+        }
 
         int pivot = Math.max(0, (word.length() - 1) / 2);
+
+        float fittedTextSizePx = resolveFittedTextSizePx(word);
+        wordText.setTextSize(TypedValue.COMPLEX_UNIT_PX, fittedTextSizePx);
+
+        wordText.setText(buildAnchoredWord(word, pivot));
+        alignPivotToCenter(word, pivot);
+    }
+
+    private float resolveFittedTextSizePx(String word) {
+        int availableWidth = Math.max(0, wordText.getWidth() - wordText.getPaddingLeft() - wordText.getPaddingRight());
+        if (availableWidth == 0) {
+            return baseWordTextSizePx;
+        }
+
+        TextPaint basePaint = new TextPaint(wordText.getPaint());
+        basePaint.setTextSize(baseWordTextSizePx);
+        float wordWidthAtBase = basePaint.measureText(word);
+        if (wordWidthAtBase <= availableWidth) {
+            return baseWordTextSizePx;
+        }
+
+        float scaled = baseWordTextSizePx * (availableWidth / wordWidthAtBase);
+        float minPx = TypedValue.applyDimension(
+                TypedValue.COMPLEX_UNIT_SP,
+                MIN_WORD_TEXT_SP,
+                getResources().getDisplayMetrics()
+        );
+        return Math.max(minPx, scaled);
+    }
+
+    private CharSequence buildAnchoredWord(String word, int pivot) {
         @ColorInt int accentColor = getColor(R.color.accent);
 
         SpannableStringBuilder builder = new SpannableStringBuilder(word);
@@ -188,6 +230,21 @@ public class MainActivity extends AppCompatActivity {
                 Spanned.SPAN_EXCLUSIVE_EXCLUSIVE
         );
         return builder;
+    }
+
+    private void alignPivotToCenter(String word, int pivot) {
+        int availableWidth = Math.max(0, wordText.getWidth() - wordText.getPaddingLeft() - wordText.getPaddingRight());
+        if (availableWidth == 0) {
+            wordText.post(() -> alignPivotToCenter(word, pivot));
+            return;
+        }
+
+        float beforePivot = wordText.getPaint().measureText(word, 0, pivot);
+        float pivotWidth = wordText.getPaint().measureText(word, pivot, pivot + 1);
+        float pivotCenterX = beforePivot + (pivotWidth / 2f);
+        float targetCenterX = availableWidth / 2f;
+
+        wordText.setTranslationX(targetCenterX - pivotCenterX);
     }
 
     @Override
