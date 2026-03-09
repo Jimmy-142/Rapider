@@ -11,6 +11,7 @@ import android.text.Spanned;
 import android.text.style.ForegroundColorSpan;
 import android.util.TypedValue;
 import android.view.MotionEvent;
+import android.view.WindowManager;
 import android.widget.SeekBar;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -213,6 +214,7 @@ public class MainActivity extends AppCompatActivity {
     private void startPlayback() {
         isPlaying = true;
         playPauseButton.setText(R.string.pause);
+        getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
         updateNavigationButtons();
         uiHandler.post(tick);
     }
@@ -220,6 +222,7 @@ public class MainActivity extends AppCompatActivity {
     private void pausePlayback() {
         isPlaying = false;
         playPauseButton.setText(R.string.play);
+        getWindow().clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
         uiHandler.removeCallbacks(tick);
         updateNavigationButtons();
     }
