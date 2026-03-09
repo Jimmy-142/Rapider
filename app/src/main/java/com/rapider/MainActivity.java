@@ -4,6 +4,7 @@ import android.net.Uri;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
+import android.text.Layout;
 import android.text.SpannableStringBuilder;
 import android.text.TextPaint;
 import android.text.Spanned;
@@ -83,6 +84,7 @@ public class MainActivity extends AppCompatActivity {
 
         setupOpenDocumentLauncher();
         updateWpmLabel();
+        showStatusText(getString(R.string.empty_state));
 
         wpmSeek.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
             @Override
@@ -132,7 +134,7 @@ public class MainActivity extends AppCompatActivity {
         }
 
         pausePlayback();
-        wordText.setText("Loading…");
+        showStatusText("Loading…");
 
         ioExecutor.execute(() -> {
             try {
@@ -142,7 +144,7 @@ public class MainActivity extends AppCompatActivity {
                     words.addAll(extracted);
                     currentIndex = 0;
                     if (words.isEmpty()) {
-                        wordText.setText(R.string.empty_state);
+                        showStatusText(getString(R.string.empty_state));
                         Toast.makeText(this, "No readable text found in PDF", Toast.LENGTH_SHORT).show();
                     } else {
                         showWord(words.get(0));
@@ -151,7 +153,7 @@ public class MainActivity extends AppCompatActivity {
                 });
             } catch (IOException ex) {
                 uiHandler.post(() -> {
-                    wordText.setText(R.string.empty_state);
+                    showStatusText(getString(R.string.empty_state));
                     Toast.makeText(this, "Failed to open PDF: " + ex.getMessage(), Toast.LENGTH_LONG).show();
                 });
             }
@@ -175,6 +177,8 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void showWord(String rawWord) {
+        setWordMode();
+
         if (rawWord == null) {
             wordText.setText("");
             wordText.setTranslationX(0f);
@@ -245,6 +249,27 @@ public class MainActivity extends AppCompatActivity {
         float targetCenterX = availableWidth / 2f;
 
         wordText.setTranslationX(targetCenterX - pivotCenterX);
+    }
+
+    private void showStatusText(String text) {
+        setStatusMode();
+        wordText.setText(text);
+        wordText.setTranslationX(0f);
+    }
+
+    private void setStatusMode() {
+        wordText.setSingleLine(false);
+        wordText.setMaxLines(2);
+        wordText.setGravity(android.view.Gravity.CENTER_HORIZONTAL | android.view.Gravity.CENTER_VERTICAL);
+        wordText.setBreakStrategy(Layout.BREAK_STRATEGY_HIGH_QUALITY);
+        wordText.setHyphenationFrequency(Layout.HYPHENATION_FREQUENCY_FULL);
+    }
+
+    private void setWordMode() {
+        wordText.setSingleLine(true);
+        wordText.setGravity(android.view.Gravity.START | android.view.Gravity.CENTER_VERTICAL);
+        wordText.setBreakStrategy(Layout.BREAK_STRATEGY_SIMPLE);
+        wordText.setHyphenationFrequency(Layout.HYPHENATION_FREQUENCY_NONE);
     }
 
     @Override
