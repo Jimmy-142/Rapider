@@ -32,7 +32,7 @@ public class MainActivity extends AppCompatActivity {
 
     private static final int MIN_WPM = 100;
     private static final int DEFAULT_WPM = 300;
-    private static final float MIN_WORD_TEXT_SP = 16f;
+    private static final float MIN_WORD_TEXT_SP = 10f;
 
     private final Handler uiHandler = new Handler(Looper.getMainLooper());
     private final ExecutorService ioExecutor = Executors.newSingleThreadExecutor();
@@ -194,14 +194,14 @@ public class MainActivity extends AppCompatActivity {
 
         int pivot = Math.max(0, (word.length() - 1) / 2);
 
-        float fittedTextSizePx = resolveFittedTextSizePx(word);
+        float fittedTextSizePx = resolveFittedTextSizePx(word, pivot);
         wordText.setTextSize(TypedValue.COMPLEX_UNIT_PX, fittedTextSizePx);
 
         wordText.setText(buildAnchoredWord(word, pivot));
         alignPivotToCenter(word, pivot);
     }
 
-    private float resolveFittedTextSizePx(String word) {
+    private float resolveFittedTextSizePx(String word, int pivot) {
         int availableWidth = Math.max(0, wordText.getWidth() - wordText.getPaddingLeft() - wordText.getPaddingRight());
         if (availableWidth == 0) {
             return baseWordTextSizePx;
@@ -209,18 +209,40 @@ public class MainActivity extends AppCompatActivity {
 
         TextPaint basePaint = new TextPaint(wordText.getPaint());
         basePaint.setTextSize(baseWordTextSizePx);
-        float wordWidthAtBase = basePaint.measureText(word);
-        if (wordWidthAtBase <= availableWidth) {
+        float requiredWidthAtBase = measureRequiredWidthForCenteredPivot(basePaint, word, pivot);
+        if (requiredWidthAtBase <= availableWidth) {
             return baseWordTextSizePx;
         }
 
-        float scaled = baseWordTextSizePx * (availableWidth / wordWidthAtBase);
+        float scaled = baseWordTextSizePx * (availableWidth / requiredWidthAtBase);
         float minPx = TypedValue.applyDimension(
                 TypedValue.COMPLEX_UNIT_SP,
                 MIN_WORD_TEXT_SP,
                 getResources().getDisplayMetrics()
         );
-        return Math.max(minPx, scaled);
+        if (scaled >= minPx) {
+            return scaled;
+        }
+
+        TextPaint minPaint = new TextPaint(basePaint);
+        minPaint.setTextSize(minPx);
+        float requiredWidthAtMin = measureRequiredWidthForCenteredPivot(minPaint, word, pivot);
+        if (requiredWidthAtMin <= availableWidth) {
+            return minPx;
+        }
+
+        return minPx * (availableWidth / requiredWidthAtMin);
+    }
+
+    private float measureRequiredWidthForCenteredPivot(TextPaint paint, String word, int pivot) {
+        float beforePivot = paint.measureText(word, 0, pivot);
+        float pivotWidth = paint.measureText(word, pivot, pivot + 1);
+        float totalWidth = paint.measureText(word);
+
+        float pivotCenterX = beforePivot + (pivotWidth / 2f);
+        float leftSpan = pivotCenterX;
+        float rightSpan = totalWidth - pivotCenterX;
+        return 2f * Math.max(leftSpan, rightSpan);
     }
 
     private CharSequence buildAnchoredWord(String word, int pivot) {
