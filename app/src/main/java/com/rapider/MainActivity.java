@@ -45,6 +45,8 @@ public class MainActivity extends AppCompatActivity {
     private TextView wordText;
     private TextView wpmLabel;
     private MaterialButton playPauseButton;
+    private MaterialButton goBackButton;
+    private MaterialButton loadPdfButton;
     private float baseWordTextSizePx;
 
     private final Runnable tick = new Runnable() {
@@ -78,7 +80,8 @@ public class MainActivity extends AppCompatActivity {
         wordText = findViewById(R.id.word_text);
         wpmLabel = findViewById(R.id.wpm_label);
         playPauseButton = findViewById(R.id.play_pause_button);
-        MaterialButton pickPdfButton = findViewById(R.id.pick_pdf_button);
+        goBackButton = findViewById(R.id.go_back_button);
+        loadPdfButton = findViewById(R.id.load_pdf_button);
         SeekBar wpmSeek = findViewById(R.id.wpm_seek);
         baseWordTextSizePx = wordText.getTextSize();
 
@@ -104,7 +107,18 @@ public class MainActivity extends AppCompatActivity {
             }
         });
 
-        pickPdfButton.setOnClickListener(v -> openDocumentLauncher.launch("application/pdf"));
+        updateNavigationButtons();
+
+        goBackButton.setOnClickListener(v -> {
+            if (words.isEmpty()) {
+                openDocumentLauncher.launch("application/pdf");
+                return;
+            }
+
+            stepBackOneWord();
+        });
+
+        loadPdfButton.setOnClickListener(v -> openDocumentLauncher.launch("application/pdf"));
 
         playPauseButton.setOnClickListener(v -> {
             if (isPlaying) {
@@ -150,11 +164,13 @@ public class MainActivity extends AppCompatActivity {
                         showWord(words.get(0));
                         Toast.makeText(this, "Loaded " + words.size() + " words", Toast.LENGTH_SHORT).show();
                     }
+                    updateNavigationButtons();
                 });
             } catch (IOException ex) {
                 uiHandler.post(() -> {
                     showStatusText(getString(R.string.empty_state));
                     Toast.makeText(this, "Failed to open PDF: " + ex.getMessage(), Toast.LENGTH_LONG).show();
+                    updateNavigationButtons();
                 });
             }
         });
@@ -163,6 +179,7 @@ public class MainActivity extends AppCompatActivity {
     private void startPlayback() {
         isPlaying = true;
         playPauseButton.setText(R.string.pause);
+        updateNavigationButtons();
         uiHandler.post(tick);
     }
 
@@ -170,6 +187,29 @@ public class MainActivity extends AppCompatActivity {
         isPlaying = false;
         playPauseButton.setText(R.string.play);
         uiHandler.removeCallbacks(tick);
+        updateNavigationButtons();
+    }
+
+    private void stepBackOneWord() {
+        if (words.isEmpty()) {
+            return;
+        }
+
+        pausePlayback();
+        currentIndex = Math.max(0, currentIndex - 2);
+        showWord(words.get(currentIndex));
+        currentIndex++;
+    }
+
+    private void updateNavigationButtons() {
+        if (words.isEmpty()) {
+            goBackButton.setText(R.string.pick_pdf);
+            loadPdfButton.setVisibility(android.view.View.GONE);
+            return;
+        }
+
+        goBackButton.setText(R.string.go_back);
+        loadPdfButton.setVisibility(isPlaying ? android.view.View.GONE : android.view.View.VISIBLE);
     }
 
     private void updateWpmLabel() {
