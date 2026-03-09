@@ -10,6 +10,7 @@ import android.text.TextPaint;
 import android.text.Spanned;
 import android.text.style.ForegroundColorSpan;
 import android.util.TypedValue;
+import android.view.MotionEvent;
 import android.widget.SeekBar;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -33,6 +34,8 @@ public class MainActivity extends AppCompatActivity {
     private static final int MIN_WPM = 100;
     private static final int DEFAULT_WPM = 300;
     private static final float MIN_WORD_TEXT_SP = 10f;
+    private static final long GO_BACK_INITIAL_REPEAT_DELAY_MS = 275L;
+    private static final long GO_BACK_REPEAT_DELAY_MS = 100L;
 
     private final Handler uiHandler = new Handler(Looper.getMainLooper());
     private final ExecutorService ioExecutor = Executors.newSingleThreadExecutor();
@@ -66,6 +69,18 @@ public class MainActivity extends AppCompatActivity {
 
             long delay = Math.max(30L, 60_000L / Math.max(MIN_WPM, currentWpm));
             uiHandler.postDelayed(this, delay);
+        }
+    };
+
+    private final Runnable goBackRepeater = new Runnable() {
+        @Override
+        public void run() {
+            if (words.isEmpty()) {
+                return;
+            }
+
+            stepBackOneWord();
+            uiHandler.postDelayed(this, GO_BACK_REPEAT_DELAY_MS);
         }
     };
 
@@ -112,10 +127,29 @@ public class MainActivity extends AppCompatActivity {
         goBackButton.setOnClickListener(v -> {
             if (words.isEmpty()) {
                 openDocumentLauncher.launch("application/pdf");
-                return;
+            }
+        });
+
+        goBackButton.setOnTouchListener((v, event) -> {
+            if (words.isEmpty()) {
+                return false;
             }
 
-            stepBackOneWord();
+            if (event.getAction() == MotionEvent.ACTION_DOWN) {
+                v.performClick();
+                uiHandler.removeCallbacks(goBackRepeater);
+                stepBackOneWord();
+                uiHandler.postDelayed(goBackRepeater, GO_BACK_INITIAL_REPEAT_DELAY_MS);
+                return true;
+            }
+
+            if (event.getAction() == MotionEvent.ACTION_UP
+                    || event.getAction() == MotionEvent.ACTION_CANCEL) {
+                uiHandler.removeCallbacks(goBackRepeater);
+                return true;
+            }
+
+            return false;
         });
 
         loadPdfButton.setOnClickListener(v -> openDocumentLauncher.launch("application/pdf"));
@@ -338,6 +372,7 @@ public class MainActivity extends AppCompatActivity {
     protected void onDestroy() {
         super.onDestroy();
         pausePlayback();
+        uiHandler.removeCallbacks(goBackRepeater);
         ioExecutor.shutdownNow();
     }
 }
